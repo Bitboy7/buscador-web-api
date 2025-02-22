@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Buscador Web</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .search-loader {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .google-logo {
+            font-family: 'Product Sans', Arial, sans-serif;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .google-logo span {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center" style="background-image: url('https://img.freepik.com/foto-gratis/fondo-azul-degradado-lujo-abstracto-azul-oscuro-liso-banner-estudio-vineta-negra_1258-63450.jpg'); background-size: cover; background-position: center;">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Sección de búsqueda -->
+        <div class="max-w-2xl mx-auto mb-8 text-center">
+            <h1 class="google-logo mb-8">
+                <span style="color: #4285F4;">B</span>
+                <span style="color: #EA4335;">u</span>
+                <span style="color: #FBBC05;">s</span>
+                <span style="color: #34A853;">c</span>
+                <span style="color: #4285F4;">a</span>
+                <span style="color: #EA4335;">d</span>
+                <span style="color: #FBBC05;">o</span>
+                <span style="color: #34A853;">r</span>
+            </h1>
+            <div class="flex gap-2 justify-center">
+                <input 
+                    type="text" 
+                    id="query" 
+                    placeholder="¿Qué deseas consultar?" 
+                    class="flex-1 p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style="max-width: 600px;"
+                >
+                <button 
+                    onclick="buscar()" 
+                    class="bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-green-400 transition-colors duration-300 ease-in-out transform hover:scale-105"
+                >
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Resultados -->
+        <div id="resultado" class="max-w-3xl mx-auto"></div>
+    </div>
+
+    <script>
+        function buscar() {
+            const query = $('#query').val().trim();
+            
+            if (!query) {
+            alert("Por favor ingrese un término de búsqueda.");
+            return;
+            }
+
+            $.ajax({
+            url: `/api/search?q=${encodeURIComponent(query)}`,
+            method: 'GET',
+            beforeSend: function() {
+                $('#resultado').html(`
+                <div class="flex flex-col items-center justify-center py-12">
+                    <div class="flex items-center space-x-4">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                    <div class="search-loader flex flex-col">
+                        <span class="text-lg font-semibold text-blue-600">Buscando</span>
+                        <span class="text-sm text-gray-500">Espere un momento...</span>
+                    </div>
+                    </div>
+                    <div class="mt-4 w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-blue-500 rounded-full animate-pulse"></div>
+                    </div>
+                </div>
+                `);
+            },
+            success: function(response) {
+                // Mostrar resultados en consola
+                console.group('Resultados de búsqueda');
+                console.log('Query:', query);
+                console.log('Total resultados:', response.organic_results?.length || 0);
+                console.table(response.organic_results?.map(result => ({
+                título: result.title,
+                URL: result.url,
+                descripción: result.snippet
+                })) || []);
+                console.groupEnd();
+
+                let html = '';
+                if (response.organic_results?.length > 0) {
+                html += '<div class="space-y-6">';
+                response.organic_results.forEach(result => {
+                    html += `
+                    <div class="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="text-xl font-semibold text-blue-600 mb-2">${result.title}</h3>
+                        <a href="${result.url}" target="_blank" 
+                           class="text-green-700 text-sm hover:underline mb-2 block">${result.url}</a>
+                        <p class="text-gray-600">${result.snippet || ''}</p>
+                    </div>
+                    `;
+                });
+                html += '</div>';
+                } else {
+                console.log('No se encontraron resultados');
+                html = `
+                    <div class="text-center py-8 text-gray-600">
+                    <p>No se encontraron resultados</p>
+                    </div>
+                `;
+                }
+                $('#resultado').html(html);
+            },
+            error: function(xhr) {
+                console.error('Error en la búsqueda:', xhr.status, xhr.statusText);
+                $('#resultado').html(`
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                    Error: ${xhr.status} - ${xhr.statusText}
+                </div>
+                `);
+            }
+            });
+        }
+
+        // Permitir búsqueda con Enter
+        $('#query').keypress(function(e) {
+            if (e.which == 13) {
+                buscar();
+            }
+        });
+    </script>
+</body>
+</html>
