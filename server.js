@@ -21,6 +21,7 @@ const searchLogFile = path.join(__dirname, "search-log.json");
 
 app.use(cors());
 app.use(express.static("public"));
+app.use(express.json());
 
 // Función para guardar el registro de búsqueda
 async function logSearch(query, results) {
@@ -72,6 +73,23 @@ app.get("/api/search-history", async (req, res) => {
     res.json(JSON.parse(data));
   } catch (error) {
     res.json([]);
+  }
+});
+
+// Añadir el endpoint para eliminar una búsqueda
+app.post("/api/delete-search", async (req, res) => {
+  try {
+    const { query } = req.body;
+    const existingData = await fs.readFile(searchLogFile, "utf8");
+    let searches = JSON.parse(existingData);
+
+    // Filtrar las búsquedas para eliminar la que coincide con el query
+    searches = searches.filter((search) => search.query !== query);
+
+    await fs.writeFile(searchLogFile, JSON.stringify(searches, null, 2));
+    res.status(200).json({ message: "Búsqueda eliminada correctamente" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

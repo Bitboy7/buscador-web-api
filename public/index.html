@@ -91,6 +91,23 @@
 </head>
 <body class="light-theme min-h-screen flex items-center justify-center">
     <div class="container mx-auto px-4 py-8">
+        <!-- Botones en la parte superior derecha -->
+        <div class="absolute top-4 right-4 flex gap-2">
+            <!-- Botón para exportar historial -->
+            <button 
+                onclick="exportarHistorial()" 
+                class="bg-yellow-500 text-white px-6 py-3 rounded-full hover:bg-yellow-600 transition-colors duration-300 ease-in-out transform hover:scale-105"
+            >
+                <i class="fas fa-file-export"></i>
+            </button>
+            <!-- Botón para toggle de tema -->
+            <button 
+                onclick="toggleTema()" 
+                class="bg-gray-500 text-white px-6 py-3 rounded-full hover:bg-purple-600 transition-colors duration-300 ease-in-out transform hover:scale-105"
+            >
+                <i class="fas fa-adjust"></i>
+            </button>
+        </div>
         <!-- Sección de búsqueda -->
         <div class="max-w-2xl mx-auto mb-8 text-center">
             <h1 class="google-logo mb-8">
@@ -123,21 +140,7 @@
                     class="bg-gray-500 text-white px-6 py-3 rounded-full hover:bg-black transition-colors duration-300 ease-in-out transform hover:scale-105 ml-2"
                 >
                     <i class="fas fa-history"></i>
-                </button>
-                <!-- Botón para exportar historial -->
-                <button 
-                    onclick="exportarHistorial()" 
-                    class="bg-yellow-500 text-white px-6 py-3 rounded-full hover:bg-yellow-600 transition-colors duration-300 ease-in-out transform hover:scale-105 ml-2"
-                >
-                    <i class="fas fa-file-export"></i>
-                </button>
-                <!-- Botón para toggle de tema -->
-                <button 
-                    onclick="toggleTema()" 
-                    class="bg-purple-500 text-white px-6 py-3 rounded-full hover:bg-purple-600 transition-colors duration-300 ease-in-out transform hover:scale-105 ml-2"
-                >
-                    <i class="fas fa-adjust"></i>
-                </button>
+                 </button>
             </div>
         </div>
 
@@ -150,6 +153,18 @@
         >
             <i class="fas fa-arrow-up"></i>
         </button>
+    </div>
+
+    <div id="modalEliminar" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 class="text-xl font-bold mb-4">Confirmar Eliminación</h2>
+            <p class="mb-4">¿Estás seguro de que deseas eliminar esta búsqueda? Escribe <strong>ELIMINAR</strong> para confirmar.</p>
+            <input type="text" id="confirmacionEliminar" class="w-full p-2 border border-gray-300 rounded mb-4" placeholder="Escribe ELIMINAR">
+            <div class="flex justify-end gap-2">
+                <button onclick="cerrarModal()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancelar</button>
+                <button onclick="confirmarEliminacion()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Eliminar</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -237,20 +252,6 @@
         });
 
         function verHistorial() {
-            const filtros = `
-                <div class="mb-4 flex gap-4 justify-end">
-                    <select class="p-2 rounded" onchange="ordenarHistorial(this.value)">
-                        <option value="fecha">Ordenar por fecha</option>
-                        <option value="resultados">Ordenar por resultados</option>
-                    </select>
-                    <input 
-                        type="text" 
-                        placeholder="Filtrar búsquedas" 
-                        class="p-2 rounded"
-                        onkeyup="filtrarHistorial(this.value)"
-                    >
-                </div>
-            `;
             $.ajax({
                 url: '/api/search-history',
                 method: 'GET',
@@ -259,7 +260,6 @@
                     let html = `
                         <div class="space-y-6">
                             <h2 class="text-2xl font-bold text-blue-600 mb-4">Historial de Búsquedas</h2>
-                            ${filtros}
                     `;
                     
                     history.forEach((entry, index) => {
@@ -273,6 +273,12 @@
                                     <span class="text-sm text-gray-500">
                                         ${new Date(entry.timestamp).toLocaleString()}
                                     </span>
+                                    <button 
+                                        onclick="abrirModal(${index}, event)" 
+                                        class="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-600 transition-colors duration-300 ease-in-out transform hover:scale-105"
+                                    >
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </div>
                                 <p class="text-gray-600">Resultados encontrados: ${entry.totalResults}</p>
                                 <div id="resultados-${index}" class="hidden mt-4 space-y-4">
@@ -294,6 +300,7 @@
                     
                     html += '</div>';
                     $('#resultado').html(html);
+                    $('#toggleHistorial').removeClass('hidden');
                 },
                 error: function(xhr) {
                     $('#resultado').html(`
@@ -305,6 +312,19 @@
             });
         }
         
+        function toggleHistorial() {
+            const resultadoDiv = $('#resultado');
+            const toggleButton = $('#toggleHistorial');
+            
+            if (resultadoDiv.is(':visible')) {
+                resultadoDiv.hide();
+                toggleButton.html('<i class="fas fa-eye"></i> Mostrar Historial');
+            } else {
+                resultadoDiv.show();
+                toggleButton.html('<i class="fas fa-eye-slash"></i> Ocultar Historial');
+            }
+        }
+
         function mostrarResultadosHistorial(index) {
             const resultadosDiv = $(`#resultados-${index}`);
             resultadosDiv.toggleClass('hidden');
@@ -317,6 +337,50 @@
             if (!resultadosDiv.hasClass('hidden')) {
                 resultadosDiv[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+        }
+ 
+        let indexEliminar = null;
+
+        function abrirModal(index, event) {
+            event.stopPropagation(); // Evitar que se active el evento de mostrar resultados
+            indexEliminar = index;
+            $('#modalEliminar').removeClass('hidden');
+        }
+        
+        function cerrarModal() {
+            $('#modalEliminar').addClass('hidden');
+            $('#confirmacionEliminar').val('');
+            indexEliminar = null;
+        }
+        
+        function confirmarEliminacion() {
+            const confirmacion = $('#confirmacionEliminar').val().trim();
+            if (confirmacion === 'ELIMINAR') {
+                eliminarBusqueda(indexEliminar);
+                cerrarModal();
+            } else {
+                alert('Por favor, escribe "ELIMINAR" para confirmar.');
+            }
+        }
+        
+        function eliminarBusqueda(index) {
+            const query = history[index].query;
+        
+            $.ajax({
+                url: `/api/delete-search`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ query }),
+                success: function() {
+                    // Eliminar la búsqueda del historial local
+                    history.splice(index, 1);
+                    // Volver a renderizar el historial
+                    verHistorial();
+                },
+                error: function(xhr) {
+                    console.error('Error al eliminar la búsqueda:', xhr.status, xhr.statusText);
+                }
+            });
         }
 
         function exportarHistorial() {
