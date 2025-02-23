@@ -24,9 +24,72 @@
         .google-logo span {
             display: inline-block;
         }
+        .search-feedback {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            z-index: 50;
+            display: none;
+        }
+        .dark {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .dark .bg-white {
+            background-color: #2d2d2d !important;
+            color: #ffffff !important;
+        }
+        
+        .dark input,
+        .dark select {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border-color: #4a4a4a;
+        }
+        
+        .dark .text-gray-600 {
+            color: #d1d1d1 !important;
+        }
+        
+        .dark .text-gray-500 {
+            color: #a0a0a0 !important;
+        }
+        
+        .dark .border-t {
+            border-color: #4a4a4a !important;
+        }
+        
+        /* Mantener los colores del logo en modo oscuro */
+        .dark .google-logo span {
+            opacity: 0.9;
+        }
+        .dark .search-feedback {
+            background-color: #2d2d2d;
+            border: 1px solid #4a4a4a;
+        }
+        
+        .dark #sugerencias .hover\:bg-gray-100:hover {
+            background-color: #3d3d3d !important;
+        }
+        body {
+            transition: background-image 0.3s ease-in-out;
+        }
+        
+        body.light-theme {
+            background-image: url('https://img.freepik.com/foto-gratis/fondo-azul-degradado-lujo-abstracto-azul-oscuro-liso-banner-estudio-vineta-negra_1258-63450.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+        
+        body.dark {
+            background-image: linear-gradient(to bottom right, #1a1a1a, #2d2d2d);
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center" style="background-image: url('https://img.freepik.com/foto-gratis/fondo-azul-degradado-lujo-abstracto-azul-oscuro-liso-banner-estudio-vineta-negra_1258-63450.jpg'); background-size: cover; background-position: center;">
+<body class="light-theme min-h-screen flex items-center justify-center">
     <div class="container mx-auto px-4 py-8">
         <!-- Sección de búsqueda -->
         <div class="max-w-2xl mx-auto mb-8 text-center">
@@ -54,85 +117,115 @@
                 >
                     <i class="fas fa-search"></i>
                 </button>
+                <!-- Añade este botón junto al botón de búsqueda -->
+                <button 
+                    onclick="verHistorial()" 
+                    class="bg-gray-500 text-white px-6 py-3 rounded-full hover:bg-black transition-colors duration-300 ease-in-out transform hover:scale-105 ml-2"
+                >
+                    <i class="fas fa-history"></i>
+                </button>
+                <!-- Botón para exportar historial -->
+                <button 
+                    onclick="exportarHistorial()" 
+                    class="bg-yellow-500 text-white px-6 py-3 rounded-full hover:bg-yellow-600 transition-colors duration-300 ease-in-out transform hover:scale-105 ml-2"
+                >
+                    <i class="fas fa-file-export"></i>
+                </button>
+                <!-- Botón para toggle de tema -->
+                <button 
+                    onclick="toggleTema()" 
+                    class="bg-purple-500 text-white px-6 py-3 rounded-full hover:bg-purple-600 transition-colors duration-300 ease-in-out transform hover:scale-105 ml-2"
+                >
+                    <i class="fas fa-adjust"></i>
+                </button>
             </div>
         </div>
 
         <!-- Resultados -->
         <div id="resultado" class="max-w-3xl mx-auto"></div>
+        <button 
+            id="volverArriba"
+            class="fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg hidden"
+            onclick="window.scrollTo({top: 0, behavior: 'smooth'})"
+        >
+            <i class="fas fa-arrow-up"></i>
+        </button>
     </div>
 
     <script>
+        let history = [];
+
         function buscar() {
             const query = $('#query').val().trim();
             
             if (!query) {
-            alert("Por favor ingrese un término de búsqueda.");
-            return;
+                alert("Por favor ingrese un término de búsqueda.");
+                return;
             }
 
             $.ajax({
-            url: `/api/search?q=${encodeURIComponent(query)}`,
-            method: 'GET',
-            beforeSend: function() {
-                $('#resultado').html(`
-                <div class="flex flex-col items-center justify-center py-12">
-                    <div class="flex items-center space-x-4">
-                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-                    <div class="search-loader flex flex-col">
-                        <span class="text-lg font-semibold text-blue-600">Buscando</span>
-                        <span class="text-sm text-gray-500">Espere un momento...</span>
-                    </div>
-                    </div>
-                    <div class="mt-4 w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div class="h-full bg-blue-500 rounded-full animate-pulse"></div>
-                    </div>
-                </div>
-                `);
-            },
-            success: function(response) {
-                // Mostrar resultados en consola
-                console.group('Resultados de búsqueda');
-                console.log('Query:', query);
-                console.log('Total resultados:', response.organic_results?.length || 0);
-                console.table(response.organic_results?.map(result => ({
-                título: result.title,
-                URL: result.url,
-                descripción: result.snippet
-                })) || []);
-                console.groupEnd();
+                url: `/api/search?q=${encodeURIComponent(query)}`,
+                method: 'GET',
+                beforeSend: function() {
+                    $('#resultado').html(`
+                        <div class="flex flex-col items-center justify-center py-12">
+                            <div class="flex items-center space-x-4">
+                                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                                <div class="search-loader flex flex-col">
+                                    <span class="text-lg font-semibold text-blue-600">Buscando</span>
+                                    <span class="text-sm text-gray-500">Espere un momento...</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                    `);
+                },
+                success: function(response) {
+                    // Mostrar resultados en consola
+                    console.group('Resultados de búsqueda');
+                    console.log('Query:', query);
+                    console.log('Total resultados:', response.organic_results?.length || 0);
+                    console.table(response.organic_results?.map(result => ({
+                        título: result.title,
+                        URL: result.url,
+                        descripción: result.snippet
+                    })) || []);
+                    console.groupEnd();
 
-                let html = '';
-                if (response.organic_results?.length > 0) {
-                html += '<div class="space-y-6">';
-                response.organic_results.forEach(result => {
-                    html += `
-                    <div class="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                        <h3 class="text-xl font-semibold text-blue-600 mb-2">${result.title}</h3>
-                        <a href="${result.url}" target="_blank" 
-                           class="text-green-700 text-sm hover:underline mb-2 block">${result.url}</a>
-                        <p class="text-gray-600">${result.snippet || ''}</p>
-                    </div>
-                    `;
-                });
-                html += '</div>';
-                } else {
-                console.log('No se encontraron resultados');
-                html = `
-                    <div class="text-center py-8 text-gray-600">
-                    <p>No se encontraron resultados</p>
-                    </div>
-                `;
+                    let html = '';
+                    if (response.organic_results?.length > 0) {
+                        html += '<div class="space-y-6">';
+                        response.organic_results.forEach(result => {
+                            html += `
+                                <div class="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                    <h3 class="text-xl font-semibold text-blue-600 mb-2">${result.title}</h3>
+                                    <a href="${result.url}" target="_blank" 
+                                       class="text-green-700 text-sm hover:underline mb-2 block">${result.url}</a>
+                                    <p class="text-gray-600">${result.snippet || ''}</p>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                    } else {
+                        console.log('No se encontraron resultados');
+                        html = `
+                            <div class="text-center py-8 text-gray-600">
+                                <p>No se encontraron resultados</p>
+                            </div>
+                        `;
+                    }
+                    $('#resultado').html(html);
+                },
+                error: function(xhr) {
+                    console.error('Error en la búsqueda:', xhr.status, xhr.statusText);
+                    $('#resultado').html(`
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                            Error: ${xhr.status} - ${xhr.statusText}
+                        </div>
+                    `);
                 }
-                $('#resultado').html(html);
-            },
-            error: function(xhr) {
-                console.error('Error en la búsqueda:', xhr.status, xhr.statusText);
-                $('#resultado').html(`
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-                    Error: ${xhr.status} - ${xhr.statusText}
-                </div>
-                `);
-            }
             });
         }
 
@@ -140,6 +233,187 @@
         $('#query').keypress(function(e) {
             if (e.which == 13) {
                 buscar();
+            }
+        });
+
+        function verHistorial() {
+            const filtros = `
+                <div class="mb-4 flex gap-4 justify-end">
+                    <select class="p-2 rounded" onchange="ordenarHistorial(this.value)">
+                        <option value="fecha">Ordenar por fecha</option>
+                        <option value="resultados">Ordenar por resultados</option>
+                    </select>
+                    <input 
+                        type="text" 
+                        placeholder="Filtrar búsquedas" 
+                        class="p-2 rounded"
+                        onkeyup="filtrarHistorial(this.value)"
+                    >
+                </div>
+            `;
+            $.ajax({
+                url: '/api/search-history',
+                method: 'GET',
+                success: function(historyData) {
+                    history = historyData;
+                    let html = `
+                        <div class="space-y-6">
+                            <h2 class="text-2xl font-bold text-blue-600 mb-4">Historial de Búsquedas</h2>
+                            ${filtros}
+                    `;
+                    
+                    history.forEach((entry, index) => {
+                        html += `
+                            <div class="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer" 
+                                 onclick="mostrarResultadosHistorial(${index})">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-lg font-semibold text-blue-600">
+                                        Palabra clave: "${entry.query}"
+                                    </h3>
+                                    <span class="text-sm text-gray-500">
+                                        ${new Date(entry.timestamp).toLocaleString()}
+                                    </span>
+                                </div>
+                                <p class="text-gray-600">Resultados encontrados: ${entry.totalResults}</p>
+                                <div id="resultados-${index}" class="hidden mt-4 space-y-4">
+                                    ${entry.results.map(result => `
+                                        <div class="border-t pt-4">
+                                            <h4 class="text-md font-semibold text-blue-600">${result.title}</h4>
+                                            <a href="${result.url}" target="_blank" 
+                                               class="text-green-700 text-sm hover:underline block">${result.url}</a>
+                                            <p class="text-gray-600 text-sm">${result.snippet || ''}</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="mt-2 text-sm text-blue-500">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    $('#resultado').html(html);
+                },
+                error: function(xhr) {
+                    $('#resultado').html(`
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                            Error al cargar el historial: ${xhr.status} - ${xhr.statusText}
+                        </div>
+                    `);
+                }
+            });
+        }
+        
+        function mostrarResultadosHistorial(index) {
+            const resultadosDiv = $(`#resultados-${index}`);
+            resultadosDiv.toggleClass('hidden');
+            
+            // Aplicar tema oscuro si está activo
+            if (document.body.classList.contains('dark')) {
+                resultadosDiv.find('.bg-white').addClass('dark');
+            }
+            
+            if (!resultadosDiv.hasClass('hidden')) {
+                resultadosDiv[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function exportarHistorial() {
+            const historiaData = JSON.stringify(history, null, 2);
+            const blob = new Blob([historiaData], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'historial-busquedas.json';
+            a.click();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + K para enfocar la búsqueda
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                $('#query').focus();
+            }
+            // Esc para limpiar resultados
+            if (e.key === 'Escape') {
+                $('#resultado').empty();
+                $('#query').val('').blur();
+            }
+        });
+
+        function mostrarSugerencias(query) {
+            const sugerencias = history
+                .map(entry => entry.query)
+                .filter(q => q.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, 5);
+        
+            if (sugerencias.length > 0) {
+                const html = `
+                    <div class="absolute w-full bg-white mt-1 rounded-lg shadow-lg z-50">
+                        ${sugerencias.map(s => `
+                            <div class="p-2 hover:bg-gray-100 cursor-pointer" 
+                                 onclick="realizarBusqueda('${s}')">
+                                <i class="fas fa-history text-gray-400 mr-2"></i>${s}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                $('#sugerencias').html(html);
+            }
+        }
+
+        function mostrarEstadoCarga(estado, mensaje) {
+            const estados = {
+                cargando: `
+                    <div class="search-feedback bg-blue-100 text-blue-700">
+                        <i class="fas fa-spinner fa-spin"></i> ${mensaje}
+                    </div>
+                `,
+                error: `
+                    <div class="search-feedback bg-red-100 text-red-700">
+                        <i class="fas fa-exclamation-circle"></i> ${mensaje}
+                    </div>
+                `,
+                exito: `
+                    <div class="search-feedback bg-green-100 text-green-700">
+                        <i class="fas fa-check-circle"></i> ${mensaje}
+                    </div>
+                `
+            };
+            
+            $('#feedback').html(estados[estado]).fadeIn().delay(3000).fadeOut();
+        }
+
+        function toggleTema() {
+            const body = document.body;
+            body.classList.toggle('dark');
+            body.classList.toggle('light-theme');
+            
+            const isDark = body.classList.contains('dark');
+            localStorage.setItem('tema', isDark ? 'dark' : 'light');
+            
+            // Actualizar estado visual
+            const temaIcon = document.querySelector('.fa-adjust');
+            if (isDark) {
+                temaIcon.classList.add('fa-flip-horizontal');
+            } else {
+                temaIcon.classList.remove('fa-flip-horizontal');
+            }
+        }
+        
+        // Actualizar el document.ready
+        $(document).ready(function() {
+            const temaGuardado = localStorage.getItem('tema');
+            const body = document.body;
+            
+            if (temaGuardado === 'dark') {
+                body.classList.add('dark');
+                body.classList.remove('light-theme');
+                document.querySelector('.fa-adjust').classList.add('fa-flip-horizontal');
+            } else {
+                body.classList.add('light-theme');
+                body.classList.remove('dark');
             }
         });
     </script>
